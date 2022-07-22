@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTO Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+  
+<mapper namespace="com.keduit.mapper.BoardMapper">
+  
+  <select id="getList" resultType="com.keduit.domain.BoardVO">
+  <![CDATA[
+   select * from t_board where bno > 0
+  ]]>
+  </select>
+  
+  <!-- search 하여 읽어온 데이터의 수 만큼 페이지 수를 정해주기 -->
+  <sql id="criteria">
+  	<trim prefix="(" suffix=") AND " prefixOverrides="OR">
+  		<foreach item="type" collection="typeArr">
+  			<trim prefix="OR">
+  				<choose>
+            		<when test="type == 'T'.toString()">
+                      title like '%'||#{keyword}||'%'
+            		</when>
+            		
+            		<when test="type == 'C'.toString()">
+                      content like '%'||#{keyword}||'%'
+            		</when>
+            		
+            		<when test="type == 'W'.toString()">
+                      writer like '%'||#{keyword}||'%'
+            		</when>
+          		</choose>
+  			</trim>
+  		</foreach>
+  	</trim>
+  </sql>
+  
+  <select id="getListWithPaging" resultType="com.keduit.domain.BoardVO">
+
+    select bno, title, content, writer, regdate, updatedate
+    from(
+        select /*+INDEX_DESC(t_board SYS_C007012)*/
+        rownum rn, bno, title, content, writer, regdate, updatedate
+        from t_board
+        where 
+        <!-- refid(레퍼런스id) : 불러올 id 입력 -->
+        <!-- 검색 조건 sql 넣기 -->
+        <include refid="criteria"></include>
+    
+    <![CDATA[ 
+        rownum <= #{pageNum} * #{amount}
+    )where rn > (#{pageNum}-1) * #{amount}
+    ]]>
+  </select>
+  
+  <insert id="insert">
+  insert into t_board(bno, title, content, writer)
+  values(seq_board.nextval, #{title}, #{content}, #{writer})
+  </insert>
+  
+  <insert id="insertSelectKey">
+    <selectKey keyProperty="bno" order="BEFORE"
+               resultType="long">
+               select seq_board.nextval from dual
+    </selectKey>
+    insert into t_board(bno, title, content, writer)
+    values(#{bno}, #{title}, #{content}, #{writer})
+  </insert>
+  
+  <select id="read" resultType="com.keduit.domain.BoardVO">
+  select * from t_board where bno=#{bno}
+  </select>
+  
+  <delete id="delete">
+  delete t_board where bno = #{bno}
+  </delete>
+  
+  <update id="update">
+  update t_board set title = #{title}, content = #{content}, writer= #{writer},
+      updatedate = sysdate where bno = #{bno}
+  </update>
+  
+  <select id="getTotalCount" resultType="int">
+  select count(*) from t_board 
+  where 
+  
+  <!-- 검색 조건 sql 넣기 -->
+  <include refid="criteria"></include>
+  
+  <![CDATA[
+  bno > 0
+  ]]>
+  </select>
+  
+</mapper>
